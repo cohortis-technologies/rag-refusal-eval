@@ -1,22 +1,20 @@
 # rag-refusal-eval
 
-A reproducible harness for measuring whether a retrieval-augmented (RAG) system **refuses when the
-answer is not in the retrieved material**, reported honestly in both directions:
+A harness for measuring whether a RAG system **refuses when the answer isn't in the retrieved
+material**. It reports two numbers, because one on its own is useless:
 
-- **absence coverage**: of genuinely-unanswerable questions, the fraction refused (higher is better);
-- **false-refusal**: of answerable questions, the fraction wrongly refused (lower is better).
+- **absence coverage**: of genuinely-unanswerable questions, the fraction it refused. Higher is better.
+- **false-refusal**: answerable questions it refused anyway. Lower is better.
 
-Every number here carries its n, and no absence number appears without its false-refusal pair,
-because either number alone is trivially gameable: a system that refuses everything scores 100%
-absence coverage, and a system that answers everything scores 0% false-refusal. Both show up below,
-in real models.
+Refuse everything and you score 100% on the first. Answer everything and you score 0% on the second.
+Both of those models are in the tables below, so the pair is always reported together, with n.
 
 ## The numbers
 
 Mechanism under test: two-pass verification. A model drafts an answer from the retrieved context;
 a second cheap call judges one thing (does the material actually contain the answer?); UNSUPPORTED
-becomes a deterministic refusal. Model-based, so there is no retrieval-similarity threshold to tune,
-and (measured, section c of [METHODOLOGY.md](METHODOLOGY.md)) thresholds do not transfer between
+becomes a deterministic refusal. Model-based, so there's no retrieval-similarity threshold to tune,
+and (measured, section c of [METHODOLOGY.md](METHODOLOGY.md)) thresholds don't transfer between
 corpora anyway.
 
 **Scoring is symmetric**: a case counts as refused whenever the system declines, whether the draft
@@ -24,12 +22,12 @@ model refused or the verifier overrode it, and the same rule scores both columns
 an earlier version of this harness scored coverage on either layer but false-refusal on the verifier
 alone, which flattered the system in both directions at once. See the failure log.
 
-**The baseline column is the one to read first.** It is what the model does with the mechanism turned
-off, in *both* directions. Where it already equals the coverage column, the verification pass
-contributed nothing on that corpus and the number is a property of the model, not of this repo's
-mechanism. Where the verifier does add absence coverage, look at what it added to the false-refusal
-column in the same row: on qwen2.5:0.5b/Blender it buys +14 absence cases and costs +57 false
-refusals, which is the whole argument for never reading one column alone.
+**Read the baseline column first.** That's what the model does with the mechanism switched off, in
+both directions. Where it already equals the coverage column, the verification pass did nothing on
+that corpus and the number belongs to the model, not to anything in this repo.
+
+Where the verifier does add coverage, check what it cost in the same row. On qwen2.5:0.5b against
+the Blender corpus it buys 14 absence cases and causes 57 false refusals.
 
 **Adversarial absence corpus as shipped** (17 genuinely-silent cases across SQLite / Python docs,
 9 answerable controls; every absence case annotated with *why* the material is silent):
@@ -68,33 +66,28 @@ and PostgreSQL docs (13 absence / 36 answerable):
 | mistral:7b | 54% (7/13) | 0% (0/36) | 0% (0/13) / 0% (0/36) | +7 absence / +0 false refusals |
 
 The original private run of the adversarial corpus had a third domain (Redis, 8 more absence cases;
-qwen2.5:7b 92% / 8% at n=25/12). It is withheld because current redis.io documentation is
-CC BY-NC-SA (NonCommercial), which we cannot honestly redistribute; the withheld cases' score rows
+qwen2.5:7b 92% / 8% at n=25/12). It's withheld because current redis.io documentation is
+CC BY-NC-SA (NonCommercial), which we can't honestly redistribute; the withheld cases' score rows
 (no text) are in `results/` and both grids are in [results/RESULTS.md](results/RESULTS.md). The
 licensing catch is itself part of the story: verify the license page, not the assumption.
 
-### What the data actually supports
+### What the numbers say
 
-1. **The mechanism earns its keep on small models and does nothing on capable ones.** On the
-   adversarial corpus it takes qwen2.5:7b from 47% to 88% absence coverage and llama3.1:8b from 59%
-   to 100%, but adds exactly zero for qwen2.5:14b, gemma2:9b and the hosted 70b, which already
-   refuse every absence case unaided. On PostgreSQL it takes llama3.1:8b from 8% to 100%. If you can
-   afford a large model, the interesting question is not this mechanism; if you are running a 7B
-   locally, it roughly doubles absence coverage.
-2. **Easy corpora compress differences; they do not erase them.** On the standard corpora every
-   model at 3B and above *except* mistral:7b reaches 92-100% absence coverage (mistral is the
-   exception at 82% on Blender and 54% on PostgreSQL), and the rest separate mainly on false-refusal
-   (0% to 23%). The adversarial corpus separates the absence column too, but modestly for capable
-   models: it moves qwen2.5:7b down by two cases out of 17 and leaves 14b, gemma2 and the 70b at
-   100%. State this as "an easy corpus barely separates capable models on the absence axis", not as
-   a large hidden effect.
-3. **Family beats size, and the failure is not one-directional.** mistral:7b and qwen2.5:7b are the
-   same size; mistral gets 53% absence coverage against 88%. Under symmetric scoring mistral is also
-   *not* the permissive model an earlier version of this README described - it wrongly refuses 22%
-   (2/9) of answerable questions while still missing 47% of the unanswerable ones. It is worse in
-   both directions, not trading one for the other. Note also that mistral's weakness was already
-   visible on the easy PostgreSQL corpus (54%), so the hard corpus confirmed it rather than
-   revealing it.
+**The mechanism is worth a lot at 7B and nothing at 14B.** On the adversarial corpus it takes
+qwen2.5:7b from 47% to 88% absence coverage, and llama3.1:8b from 59% to 100%. On PostgreSQL it
+takes llama3.1:8b from 8% to 100%, which is the biggest single jump in the whole grid. For
+qwen2.5:14b, gemma2:9b and the hosted 70b it adds exactly zero, because those three already refuse
+every absence case on their own. Running a 14b or better? Skip this, you get the refusals for free.
+It's for the 7B case.
+
+The easy corpora barely separate anything above 3B on the absence axis, which is why I built the
+hard one. Even then it only moves qwen2.5:7b, and only by two cases out of 17.
+
+**Family beats size.** mistral:7b and qwen2.5:7b are the same size and 35 points apart. mistral also
+isn't the permissive model an earlier version of this README claimed: it refuses 22% (2/9) of
+answerable questions *and* misses 47% of the unanswerable ones. Bad in both directions. Its weakness
+was already visible on the easy PostgreSQL corpus at 54%, so the hard corpus confirmed it, it didn't
+find it.
 
 Caveats: n on the shipped hard set is small (17 absence, 9 answerable), so one case is 5.9% of the
 absence column and 11.1% of the false-refusal column; every number is model- and corpus-specific;
@@ -102,26 +95,24 @@ re-run on any change. Full tables, limits, and the failure log: [METHODOLOGY.md]
 
 ## Seven ways this measurement was wrong (some found by outside review)
 
-The most useful part of this project is the sequence of ways the measurement was wrong before it was
-right. Two of the entries below were found by an adversarial reviewer reading the code, not by us -
-which is the honest version of the story and the reason the list is worth reading. Each is written up
-in [METHODOLOGY.md](METHODOLOGY.md#2-the-failures-in-the-order-they-happened):
+The failure log is the part I'd read. Two of these were found by an outside reviewer reading the
+code, not by me. Each is written up in
+[METHODOLOGY.md](METHODOLOGY.md#2-the-failures-in-the-order-they-happened):
 
-- The **hand-authored corpus ran easy**: 95% (21/22) on self-written docs against 86% (n=79) on real
-  documentation, on the same keyword scorer. A corpus you author to test your system is an upper
-  bound on your system.
+- The **corpus I wrote myself ran easy**: 95% (21/22) on my own docs against 86% (n=79) on real
+  documentation, same scorer. Which should have been obvious before I ran it.
 - The **injection defence scored a false 0%**: the Python eval's `\s` neutralised a Unicode-space
   payload the production matcher would have missed. The honest number is 7% (2/28 on qwen2.5:7b,
   re-run 2026-07-30, artifact in [results/INJECTION_qwen2.5-7b.txt](results/INJECTION_qwen2.5-7b.txt);
-  the runner now reports compliance both pre- and post-output-guard so the guard cannot hide a leak,
+  the runner now reports compliance both pre- and post-output-guard so the guard can't hide a leak,
   and one canary that could never fire was repointed at a string the system prompt actually
   contains). If your eval and your production code normalise text differently, your eval is
   measuring the eval.
-- The **retrieval-confidence threshold did not transfer**: a 0.60 cosine cutoff gave 35% absence
-  coverage (6/17) on one corpus and 69% (9/13) on another, both at 0% false-refusal (0/62, 0/36) -
-  cheap and ineffective. It only became effective by becoming expensive. That is why the shipped
-  mechanism has no threshold.
-- The **truncation guard was correct and useless**: it never damaged a grounded answer in the internal run that measured it (0 false positives in 17 grounded answers; that run predates this repo and its rows are not shipped), and its real coverage is near zero because the failure it targets usually appears as a paraphrased refusal it cannot match.
+- The **retrieval-confidence threshold didn't transfer**: a 0.60 cosine cutoff gave 35% absence
+  coverage (6/17) on one corpus and 69% (9/13) on another, both at 0% false-refusal. Pushing it high
+  enough to catch everything cost 29% false-refusal on Blender. That's why the shipped mechanism has
+  no threshold in it.
+- The **truncation guard was correct and useless**: it never damaged a grounded answer in the internal run that measured it (0 false positives in 17 grounded answers; that run predates this repo and its rows aren't shipped), and its real coverage is near zero because the failure it targets usually appears as a paraphrased refusal it can't match.
 - The **scoring rule was asymmetric in the system's favour**: absence coverage counted a refusal from
   either layer, but false-refusal counted only the verifier's. Draft-model refusals of answerable
   questions were therefore invisible. Under the corrected symmetric rule mistral:7b's "0%
@@ -132,8 +123,9 @@ in [METHODOLOGY.md](METHODOLOGY.md#2-the-failures-in-the-order-they-happened):
   now carries the no-mechanism baseline next to the coverage number.
 - The **mislabeled absence cases produced a false 50%**: 4 of 8 "absence" cases were actually
   answerable ("what is the SQLite equivalent of SHOW DATABASES?" against material that contains
-  `.databases` is answerable). Reading the individual missed cases, not the aggregate, caught it.
-  The discipline that came out of it: **if the material says "there is no X, use Y", the question is
+  `.databases` is answerable). I only caught it by going through the 8 cases by hand instead of
+  looking at the 50%.
+  The discipline that came out of it: **if the material says "there's no X, use Y", the question is
   answerable, not absent.** Every absence case in the adversarial corpus now carries a `why` field
   justifying genuine silence. **Scope caveat**: that audit covers the adversarial corpus only. The 30
   absence labels in the two standard corpora predate the discipline and have not been re-audited case
@@ -155,12 +147,12 @@ in [METHODOLOGY.md](METHODOLOGY.md#2-the-failures-in-the-order-they-happened):
 | `results/` | per-case JSON rows for every (model, corpus) cell above + `RESULTS.md` + the injection run |
 
 The published rows carry per-case *scores*, not model outputs (id, category, top-1/top-3 similarity,
-whether the draft refused, whether the verifier said UNSUPPORTED). That is enough to recompute every
+whether the draft refused, whether the verifier said UNSUPPORTED). That's enough to recompute every
 aggregate here and to see exactly which case ids moved, but not to re-read the answers themselves;
 regenerate those locally with `gate_eval.py`, which prints them. One caveat on the shipped rows'
 `draft_ok` column: it comes from a keyword scorer that marks some *correct* refusals as not-ok when
 the refusal echoes a keyword from the question (9 such cases for qwen2.5:7b), so treat `draft_ok` as
-a coarse signal only. It is not used in any absence-coverage or false-refusal number on this page.
+a coarse signal only. It isn't used in any absence-coverage or false-refusal number on this page.
 
 ## Reproduce it
 
@@ -194,23 +186,23 @@ GROQ_API_KEY=... python3 gate_eval.py corpus_adversarial_absence groq:llama-3.3-
 ```
 
 Note: the drafting system prompt names the assistant persona of the production system this was
-extracted from ("You are Cohortis, a calm and rigorous study companion..."). It is kept verbatim
-because it is the exact prompt the published numbers were measured with; the refusal-detection and
-injection-leak checks key on it.
+extracted from ("You're Cohortis, a calm and rigorous study companion..."). I kept it verbatim because it's the exact prompt
+the published numbers were measured with, and the refusal-detection and injection-leak checks key
+on it.
 
 ## Prior art (read this first; none of this is new)
 
 This is an independent, stdlib-only reimplementation of standard groundedness and abstention
 measurement, applied to a hand-built adversarial absence corpus, with a fully local reproduction path
-and a documented log of the ways the measurement was wrong first. It is **not** a replication in the
-strict sense: it does not reproduce any specific published number, and it should not be read as
-claiming to. It claims no novelty. The relevant prior art:
+and a documented log of the ways the measurement was wrong first. It's **not** a replication in the
+strict sense: it doesn't reproduce any specific published number, and it should not be read as
+claiming to. Nothing here is new. The prior art:
 
 - **Unanswerable-question detection**: SQuAD 2.0 (Rajpurkar et al., 2018) started it.
 - **Sufficient context and retrieval gating**: "Sufficient Context" (Joren et al., ICLR 2025) asks
   the same question this harness measures - does the retrieved context actually contain enough to
   answer - and CRAG (Yan et al., 2024) is the retrieval-confidence-gating family whose threshold
-  approach we independently found does not transfer between corpora.
+  approach we independently found doesn't transfer between corpora.
 - **Abstention benchmarks**: AbstentionBench (Kirichenko et al., 2025, 20 datasets); RefusalBench
   (Muhamed et al., 2025), which uses a generator-verifier pipeline to *construct* selective-refusal
   test cases for grounded models (construction-time QA, distinct from the runtime draft-then-verify
@@ -227,21 +219,20 @@ claiming to. It claims no novelty. The relevant prior art:
   Refusal"*, covering SQuAD v2, HotpotQA and a bounded Natural Questions stress test on a local
   Ollama server, reporting coverage, unsupported-answer risk, utility and latency. **That title
   states, in different words, the same negative result this repo reports in section 2c** (a
-  retrieval-score threshold underperforms and does not transfer; prompt/verification-level handling
+  retrieval-score threshold underperforms and doesn't transfer; prompt/verification-level handling
   is what works). We reached it independently on different corpora, and we found the artifact only
-  after the fact - it is prior art for that finding, and it is cited here as such. Honest status
-  note: the artifact is self-submitted and its associated manuscript could not be found published
+  after the fact - it's prior art for that finding, and it's cited here as such. Honest status
+  note: the artifact is self-submitted and its associated manuscript couldn't be found published
   anywhere (no Crossref record, no preprint) as of 2026-07-30, so treat "IEEE Access manuscript" as
   the author's own description rather than a verified publication. The archive itself is
-  login-gated, so we could not check whether it measures a false-refusal counterpart.
+  login-gated, so I couldn't check whether it measures a false-refusal counterpart.
 
-What this repo offers over reading those: a small, fully-inspectable, stdlib-only harness you can run
-on your own corpus this afternoon; an adversarial absence corpus with a per-case rationale for why
-the material is silent; both-directions reporting **printed by the harness by default, in both the
-mechanism and baseline rows**, so dropping a column is a deliberate act rather than an oversight (the discipline is not ours - GaRAGe reports
-true/false-positive deflection rates, and risk-coverage curves are standard in selective prediction);
-a published no-mechanism baseline so the mechanism's marginal value is visible; and a written record
-of the ways the measurement went wrong first.
+Over reading those: this is a few hundred lines of stdlib Python, so you can read all of it and
+point it at your own docs today. It prints both directions and the no-mechanism baseline by default,
+so dropping a column takes effort. The reporting discipline isn't mine either, GaRAGe reports
+true/false-positive deflection rates and risk-coverage curves are standard in selective prediction.
+What I'd point at is the corpus: every case records why the material is silent, which took the
+longest and is the part I got wrong first.
 
 ## Licensing
 
@@ -258,6 +249,6 @@ of the ways the measurement went wrong first.
 
 Extracted from the eval suite of [Cohortis](https://cohortis.io), a Discord-native tutor designed to
 answer students only from uploaded course material and to refuse otherwise. The production system
-runs the same two-pass verifier this harness measures, which is why the numbers above are the
-honest bound on that design rather than a claim that it always succeeds: on the adversarial corpus
-it still answered 2 of 17 genuinely-unanswerable questions.
+runs the same two-pass verifier this harness measures. The numbers above are the bound on that
+design, not a claim that it works: on the adversarial corpus it still answered 2 of 17
+genuinely-unanswerable questions.
