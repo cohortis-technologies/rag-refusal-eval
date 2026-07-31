@@ -1,0 +1,36 @@
+### COLD RUN - fresh git clone, ollama model store empty, README instructions only
+### started: 2026-07-31T05:40:11Z
+$ git clone <repo> && cd rag-refusal-eval
+$ export OLLAMA_HOST=127.0.0.1:11502 OLLAMA_URL=http://127.0.0.1:11502/api/chat
+$ ./reproduce.sh
+==> pulling models (qwen2.5:7b draft/verify, nomic-embed-text for the retrieval-gate arm)
+[ollama pull output omitted: qwen2.5:7b 4.7 GB + nomic-embed-text 274 MB, both downloaded fresh]
+==> running the adversarial absence corpus (17 silent / 9 answerable)
+### GATE + VERIFY eval  corpus=corpus_adversarial_absence  n=26  chunks=12  embed=nomic-embed-text  draft=qwen2.5:7b ###
+-- (a) RETRIEVAL-CONFIDENCE GATE: sweep top-1 cosine threshold --
+thresh | absence refused (coverage) | answerable refused (FALSE-refusal)
+  0.40  |    0/17  (  0%)            |    0/9  (  0%)
+  0.45  |    2/17  ( 12%)            |    0/9  (  0%)
+  0.50  |    5/17  ( 29%)            |    0/9  (  0%)
+  0.55  |    7/17  ( 41%)            |    0/9  (  0%)
+  0.60  |   10/17  ( 59%)            |    1/9  ( 11%)
+  0.65  |   15/17  ( 88%)            |    1/9  ( 11%)
+  0.70  |   15/17  ( 88%)            |    5/9  ( 56%)
+  0.75  |   17/17  (100%)            |    7/9  ( 78%)
+  0.80  |   17/17  (100%)            |    8/9  ( 89%)
+  0.85  |   17/17  (100%)            |    8/9  ( 89%)
+  absence top-1 sim range: [0.407 .. 0.709]; answerable: [0.595 .. 0.857]
+  clean-separation threshold exists? False (absence_max 0.709 < answerable_min 0.595)
+-- (b) VERIFICATION PASS: draft, then SUPPORTED/UNSUPPORTED check --
+  absence coverage (refused): 15/17 ( 88%)
+  answerable FALSE-refusal:    1/9 ( 11%)
+     of which: model refused at draft 0, verifier added 1
+  verifier caught 7 absence answers the model did NOT refuse; still-missed: ['SQ_A2', 'PY_A6']
+  answerable cases the verifier wrongly flagged: ['NM3']
+  BASELINE, no mechanism (draft alone): absence 8/17 ( 47%), false-refusal 0/9 (  0%)
+  MARGINAL contribution of the verification pass: +7 absence cases, +1 false refusals
+rows -> <clone-dir>/gate_rows_corpus_adversarial_absence_qwen2.5-7b.json
+Compare against results/RESULTS.md (expected: ~88% absence coverage, ~11% false-refusal;
+exact counts can flip by one case run-to-run at temperature 0 across ollama versions).
+### exit: 0   elapsed: 163s (including cold model download)
+### finished: 2026-07-31T05:42:54Z

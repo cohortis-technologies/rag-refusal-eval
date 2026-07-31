@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.groq_key
+SWEEP_*.txt
+gate_rows_*.json
+!results/gate_rows_*.json
