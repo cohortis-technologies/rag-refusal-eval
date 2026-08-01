@@ -1,0 +1,8 @@
+line-length = 120
+
+[lint]
+select = ["E", "F", "W", "B"]
+# E501 stays off: the long lines are verbatim excerpts of licensed documentation in the corpus
+# files, and reflowing them would alter the licensed text. The rest are single-file-script idioms
+# (grouped imports, one-line guards) that are deliberate in a repo meant to be read top to bottom.
+ignore = ["E501", "E701", "E702", "E731", "E401", "E402"]

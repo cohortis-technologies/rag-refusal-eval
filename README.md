@@ -148,7 +148,11 @@ code, not by me. Each is written up in
 
 The published rows carry per-case *scores*, not model outputs (id, category, top-1/top-3 similarity,
 whether the draft refused, whether the verifier said UNSUPPORTED). That's enough to recompute every
-aggregate here and to see exactly which case ids moved, but not to re-read the answers themselves;
+aggregate here and to see exactly which case ids moved, but not to re-read the answers themselves.
+For the adversarial corpus, filter to the shipped case ids first: that JSON is the full original
+run and still carries the withheld Redis rows (`RD_A*`, `OK_RD*`), so recomputing it unfiltered
+gives 92% (23/25) absence / 8% (1/12) false-refusal instead of the published 88% (15/17) / 11%
+(1/9). See [results/RESULTS.md](results/RESULTS.md). Regenerate the answers themselves with
 regenerate those locally with `gate_eval.py`, which prints them. One caveat on the shipped rows'
 `draft_ok` column: it comes from a keyword scorer that marks some *correct* refusals as not-ok when
 the refusal echoes a keyword from the question (9 such cases for qwen2.5:7b), so treat `draft_ok` as
@@ -159,8 +163,20 @@ a coarse signal only. It isn't used in any absence-coverage or false-refusal num
 Requirements: Python 3 (stdlib only, no venv or pip needed), plus `bash`, `curl` and the `ollama`
 CLI for `reproduce.sh`; a running [ollama](https://ollama.com). Defaults assume
 `http://localhost:11434`; for anything else set `OLLAMA_URL` (and `OLLAMA_HOST` so the `ollama` CLI
-pulls to the same server). The embedding endpoint is derived from `OLLAMA_URL`, so one variable is
-enough; `OLLAMA_EMBED_URL` overrides it separately if your embedder lives elsewhere.
+pulls to the same server). Either form works, a base URL or a full `/api/chat` endpoint. The
+embedding endpoint is derived from it, so one variable is enough; `OLLAMA_EMBED_URL` overrides it
+separately if your embedder lives elsewhere.
+
+The rest of the environment, all optional:
+
+| variable | default | what it does |
+| --- | --- | --- |
+| `EMBED_MODEL` | `nomic-embed-text` | embedder used by the retrieval gate |
+| `VERIFY_PROMPT` | `v2` | the verifier prompt every published table was measured with; `v1` is the rejected over-strict one, so changing this makes your numbers incomparable to these |
+| `GATE_ARM` | `1` | set `0` to skip the retrieval arm when no local embedder is available |
+| `GROQ_MIN_INTERVAL` | `2.2` | seconds between hosted calls, to stay under rate limits |
+| `BASE` / `MODEL` | `http://localhost:11434/v1`, `qwen2.5:7b` | endpoint and model for `demo_grounding_verify.py` |
+| `GROQ_API_KEY` / `OPENAI_API_KEY` | unset | only needed to reproduce the hosted rows |
 
 Cold-start cost: pulling `qwen2.5:7b` (4.7 GB) and `nomic-embed-text` (274 MB) dominates. A measured
 cold run on a consumer GPU took **163 seconds end to end**, model download included; the full

@@ -16,8 +16,15 @@ import json, sys, time, math, urllib.request, os
 # variable points BOTH the chat and embed calls at the same server. Setting only OLLAMA_URL
 # used to leave embeddings pointing at localhost:11434, silently splitting one run across two
 # servers (or failing mid-run after the model pull).
-OLLAMA = os.environ.get("OLLAMA_EMBED_URL") or os.environ.get(
-    "OLLAMA_URL", "http://localhost:11434/api/chat").replace("/api/chat", "/api/embed")
+_RAW_EMBED = (os.environ.get("OLLAMA_EMBED_URL")
+              or os.environ.get("OLLAMA_URL", "http://localhost:11434")).rstrip("/")
+# Same either-form tolerance as run_eval.py: a base URL, a chat endpoint, or an embed endpoint.
+if _RAW_EMBED.endswith("/api/embed"):
+    OLLAMA = _RAW_EMBED
+elif "/api/" in _RAW_EMBED:
+    OLLAMA = _RAW_EMBED.rsplit("/api/", 1)[0] + "/api/embed"
+else:
+    OLLAMA = _RAW_EMBED + "/api/embed"
 
 # Raw chunk text as CourseContentIngestor stores it (the "Page title:" prefix is added at retrieval
 # time, not embedded), keyed by a short id.
@@ -66,7 +73,9 @@ def embed(model, text):
     return v, ms
 
 def cosine(a, b):
-    dot = sum(x * y for x, y in zip(a, b))
+    # strict=True: both vectors always come from the same embedding model, so a length mismatch
+    # means something upstream is wrong and should fail loudly rather than silently truncate.
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
     na = math.sqrt(sum(x * x for x in a)); nb = math.sqrt(sum(y * y for y in b))
     return dot / (na * nb) if na and nb else 0.0
 

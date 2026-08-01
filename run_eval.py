@@ -13,7 +13,10 @@ Scoring is deterministic per case. Full answers for every FAILED case are printe
 """
 import json, sys, time, urllib.request, os
 
-OLLAMA = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/chat")
+_RAW_OLLAMA = os.environ.get("OLLAMA_URL", "http://localhost:11434").rstrip("/")
+# Accept either a base URL (http://host:11434) or a full endpoint (.../api/chat). The README told
+# people to set the base form, which posted to the root and failed with HTTP 405.
+OLLAMA = _RAW_OLLAMA if "/api/" in _RAW_OLLAMA else _RAW_OLLAMA + "/api/chat"
 
 # The real, neutralized LangChainAiService @SystemMessage (production /ask system prompt).
 SYSTEM = "\n".join([

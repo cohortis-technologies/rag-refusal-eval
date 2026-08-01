@@ -16,8 +16,11 @@ Run it against a hosted OpenAI-compatible endpoint or any local ollama model:
 """
 import json, os, urllib.request
 
-BASE = os.environ.get("BASE", "https://api.groq.com/openai/v1")
-MODEL = os.environ.get("MODEL", "llama-3.3-70b-versatile")
+# Defaults target local ollama so this file runs on a clean clone with no key. Point BASE/MODEL at
+# any OpenAI-compatible endpoint (Groq: BASE=https://api.groq.com/openai/v1 MODEL=llama-3.3-70b-versatile)
+# together with GROQ_API_KEY or OPENAI_API_KEY to reproduce the hosted rows.
+BASE = os.environ.get("BASE", "http://localhost:11434/v1")
+MODEL = os.environ.get("MODEL", "qwen2.5:7b")
 
 def _key():
     k = os.environ.get("OPENAI_API_KEY") or os.environ.get("GROQ_API_KEY", "")

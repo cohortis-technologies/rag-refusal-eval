@@ -81,9 +81,15 @@ def is_refusal(text):
 
 
 def main():
-    corpus_name = sys.argv[1] if len(sys.argv) > 1 else "corpus_blender_real"
+    # Tolerate the near-certain mistake: shell tab-completion appends .py, and importing
+    # "corpus_x.py" produced a six-frame importlib traceback instead of saying what was wrong.
+    corpus_name = (sys.argv[1] if len(sys.argv) > 1 else "corpus_blender_real").removesuffix(".py")
     draft_model = sys.argv[2] if len(sys.argv) > 2 else "qwen2.5:7b"
-    corpus = importlib.import_module(corpus_name)
+    try:
+        corpus = importlib.import_module(corpus_name)
+    except ModuleNotFoundError:
+        sys.exit("unknown corpus %r; expected one of: corpus_blender_real, corpus_transfer, "
+                 "corpus_adversarial_absence" % corpus_name)
     cases = corpus.CASES
     chunks = load_chunks(corpus)
 
