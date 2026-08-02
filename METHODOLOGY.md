@@ -265,3 +265,15 @@ absence and mistral "perfect" on false-refusal. Both are unusable.
 - **The floor is a *capable* model, not just a big one.** Below a 7B-class model the verifier collapses
  into refusing everything; but not every 7B works (mistral fails). "Use a 7B+ from a strong family
  (qwen / llama / gemma), verify on your own corpus" is the honest rule, not "use 7B."
+
+> **Reproducibility note, added 2026-08-02.** The four reproductions in the table above did not
+> record the model's weight digest, only the tag `qwen2.5:7b`. That tag moves: pulling it later can
+> replace the weights. Re-measured on 2026-08-02 against the weights this project now runs
+> (digest `845dbda0ea48`), the same corpus and harness give **14/17 (82%) absence coverage at
+> 1/9 (11%) false refusal, across four consecutive runs with zero spread**.
+>
+> So the 15/17 above is not withdrawn and is not variance: on fixed weights this eval reproduces
+> exactly. It is a measurement of a configuration whose model identity was not recorded, and a
+> reader pulling `qwen2.5:7b` today should expect 14/17. The run history is now keyed on the weight
+> digest so the two are never pooled again. This is the honest reading and it costs us a point, which
+> is the only kind of correction worth trusting.
