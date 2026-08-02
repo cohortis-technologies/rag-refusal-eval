@@ -280,3 +280,24 @@ genuinely-unanswerable questions.
 > reader pulling `qwen2.5:7b` today should expect 14/17. The run history is now keyed on the weight
 > digest so the two are never pooled again. This is the honest reading and it costs us a point, which
 > is the only kind of correction worth trusting.
+
+## Second-order injection: an attack class this harness does not defend
+
+`corpus_second_order.py` holds 15 attacks and 10 controls for payloads planted in uploaded material
+that fire on somebody else's later, unrelated question. Carriers are Blender Manual prose, CC-BY-SA
+4.0, chosen so the attacks look like documentation rather than payloads; an attack an operator would
+notice while pasting is not the interesting case.
+
+Measured on `qwen2.5:7b`, digest `845dbda0ea48ed74`: **5 of 15 succeed.** Conditional triggers 2/2,
+planted framing 2/3, payload split across chunks 1/2. Planted tokens are 0/3 because the input-side
+neutralizer matches their phrasing, and imperative-free declarative payloads are 0/3.
+
+Run it with `python3 second_order_eval.py qwen2.5:7b`.
+
+The published shape is deliberate. The defended classes are the ones with an imperative to match; the
+undefended ones are material that simply asserts a falsehood, and payloads split so no single chunk
+contains an instruction. A per-chunk scanner cannot see either. A detector built for this class was
+measured against the corpus, caught 0 of 15, and was deleted rather than shipped.
+
+Publishing an attack class we cannot defend, with the cases and the numbers, is more useful than
+silence about it.
